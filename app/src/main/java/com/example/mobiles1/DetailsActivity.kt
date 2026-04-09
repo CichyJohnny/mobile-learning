@@ -15,7 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.mobiles1.storage.MovieRepository
+import com.example.mobiles1.storage.RouteRepository
 import com.example.mobiles1.ui.theme.Mobiles1Theme
 import java.util.UUID
 
@@ -24,15 +24,15 @@ class DetailsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val movieId = intent.getStringExtra(EXTRA_MOVIE_ID)
-        val movie = MovieRepository.getMovieById(UUID.fromString(movieId))
+        val routeId = intent.getStringExtra(EXTRA_ROUTE_ID)
+        val route = routeId?.let { RouteRepository.getRouteById(UUID.fromString(it)) }
 
         setContent {
             Mobiles1Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    movie?.let {
-                        MovieDetails(
-                            movie = movie,
+                    route?.let {
+                        RouteDetails(
+                            route = route,
                             modifier = Modifier.padding(innerPadding)
                         )
                     }
@@ -42,20 +42,20 @@ class DetailsActivity : ComponentActivity() {
     }
 
     companion object {
-        internal const val EXTRA_MOVIE_ID = "MOVIE_ID"
+        const val EXTRA_ROUTE_ID = "ROUTE_ID"
     }
 }
 
 @Composable
-fun MovieDetails(movie: Movie, modifier: Modifier = Modifier) {
+fun RouteDetails(route: Route, modifier: Modifier = Modifier) {
     Column(modifier = modifier.padding(16.dp)) {
         Text(
-            text = movie.title,
+            text = route.title,
             style = MaterialTheme.typography.headlineMedium
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = movie.description,
+            text = route.description,
             style = MaterialTheme.typography.bodyLarge
         )
     }
