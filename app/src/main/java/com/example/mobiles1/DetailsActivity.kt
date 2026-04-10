@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -24,19 +23,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.mobiles1.storage.RouteRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobiles1.ui.theme.Mobiles1Theme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flowOf
 import java.util.UUID
-import kotlin.time.Duration
 
 class DetailsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,14 +43,18 @@ class DetailsActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val routeId = intent.getStringExtra(EXTRA_ROUTE_ID)
-        val route = routeId?.let { RouteRepository.getRouteById(UUID.fromString(it)) }
 
         setContent {
             Mobiles1Theme {
+                val viewModel: RouteViewModel = viewModel()
+                val routeFlow = routeId?.let { viewModel.getRouteById(UUID.fromString(it)) }
+                val route by (routeFlow ?: flowOf(null)).collectAsState(initial = null)
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     route?.let {
                         RouteDetails(
-                            route = route,
+                            route = it,
+                            viewModel = viewModel,
                             modifier = Modifier.padding(innerPadding)
                         )
                     }
@@ -66,7 +69,7 @@ class DetailsActivity : ComponentActivity() {
 }
 
 @Composable
-fun RouteDetails(route: Route, modifier: Modifier = Modifier) {
+fun RouteDetails(route: Route, viewModel: RouteViewModel, modifier: Modifier = Modifier) {
     Column(modifier = modifier.padding(16.dp)) {
         Text(
             text = route.title,
@@ -78,24 +81,28 @@ fun RouteDetails(route: Route, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyLarge
         )
         Spacer(modifier = Modifier.height(32.dp))
-        Stopwatch()
+        Stopwatch(route = route, viewModel = viewModel)
     }
 }
 
 @Composable
-fun Stopwatch(modifier: Modifier = Modifier) {
-    var timeSeconds by rememberSaveable { mutableIntStateOf(0) }
-    var isRunning by rememberSaveable { mutableStateOf(false) }
+fun Stopwatch(route: Route, viewModel: RouteViewModel, modifier: Modifier = Modifier) {
+    var displayTime by remember(route.elapsedTime, route.isRunning, route.lastStartTime) {
+        val initialPassed = if (route.isRunning) System.currentTimeMillis() - route.lastStartTime else 0L
+        mutableLongStateOf(route.elapsedTime + initialPassed)
+    }
 
-    LaunchedEffect(isRunning) {
-        while (isRunning) {
-            delay(1000)
-            timeSeconds++
+    LaunchedEffect(route.isRunning) {
+        while (route.isRunning) {
+            delay(100)
+            val passed = System.currentTimeMillis() - route.lastStartTime
+            displayTime = route.elapsedTime + passed
         }
     }
 
-    val minutes = timeSeconds / 60
-    val seconds = timeSeconds % 60
+    val totalSeconds = displayTime / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
     val timeString = "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 
     Column(
@@ -110,16 +117,13 @@ fun Stopwatch(modifier: Modifier = Modifier) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            IconButton(onClick = { isRunning = true }) {
+            IconButton(onClick = { viewModel.startStopwatch(route) }) {
                 Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Start")
             }
-            IconButton(onClick = { isRunning = false }) {
+            IconButton(onClick = { viewModel.stopStopwatch(route) }) {
                 Icon(imageVector = Icons.Default.Close, contentDescription = "Stop")
             }
-            IconButton(onClick = {
-                isRunning = false
-                timeSeconds = 0
-            }) {
+            IconButton(onClick = { viewModel.resetStopwatch(route) }) {
                 Icon(imageVector = Icons.Default.Refresh, contentDescription = "Przerwij")
             }
         }

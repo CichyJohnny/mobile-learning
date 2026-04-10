@@ -18,6 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -26,9 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobiles1.DetailsActivity.Companion.EXTRA_ROUTE_ID
-import com.example.mobiles1.storage.RouteRepository
 import com.example.mobiles1.ui.theme.Mobiles1Theme
+import kotlinx.coroutines.flow.flowOf
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -37,9 +39,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Mobiles1Theme {
+                val viewModel: RouteViewModel = viewModel()
+                val routes by viewModel.allRoutes.collectAsState(initial = emptyList())
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val configuration = LocalConfiguration.current
-                    val isTablet = configuration.screenWidthDp >= 600
+                    val isTablet = configuration.smallestScreenWidthDp >= 600
 
                     var selectedRouteId by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -48,14 +53,17 @@ class MainActivity : ComponentActivity() {
                     if (isTablet) {
                         Row(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
                             RouteList(
-                                routes = RouteRepository.routes,
+                                routes = routes,
                                 onRouteClick = { route -> selectedRouteId = route.id.toString() },
                                 modifier = Modifier.weight(1f)
                             )
-                            val selectedRoute = selectedRouteId?.let { RouteRepository.getRouteById(UUID.fromString(it)) }
+                            val selectedRouteFlow = selectedRouteId?.let { viewModel.getRouteById(UUID.fromString(it)) }
+                            val selectedRoute by (selectedRouteFlow ?: flowOf(null)).collectAsState(initial = null)
+                            
                             if (selectedRoute != null) {
                                 RouteDetails(
-                                    route = selectedRoute,
+                                    route = selectedRoute!!,
+                                    viewModel = viewModel,
                                     modifier = Modifier.weight(2f)
                                 )
                             } else {
@@ -67,7 +75,7 @@ class MainActivity : ComponentActivity() {
                         }
                     } else {
                         RouteList(
-                            routes = RouteRepository.routes,
+                            routes = routes,
                             onRouteClick = { route ->
                                 val intent = Intent(context, DetailsActivity::class.java)
                                 intent.putExtra(EXTRA_ROUTE_ID, route.id.toString())
@@ -85,7 +93,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun RouteList(routes: List<Route>, onRouteClick: (Route) -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(modifier = modifier.fillMaxSize()) {
-        items(routes) { route ->
+        items(routes, key = { it.id }) { route ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
