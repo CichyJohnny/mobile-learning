@@ -47,8 +47,9 @@ class DetailsActivity : ComponentActivity() {
         setContent {
             Mobiles1Theme {
                 val viewModel: RouteViewModel = viewModel()
-                val routeFlow = routeId?.let { viewModel.getRouteById(UUID.fromString(it)) }
-                val route by (routeFlow ?: flowOf(null)).collectAsState(initial = null)
+                val routeFlow = routeId?.let { viewModel.getRouteById(UUID.fromString(it)) } ?: flowOf(null)
+                val route by routeFlow.collectAsState(initial = null)
+
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     route?.let {

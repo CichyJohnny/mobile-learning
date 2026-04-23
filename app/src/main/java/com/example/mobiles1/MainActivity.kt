@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobiles1.DetailsActivity.Companion.EXTRA_ROUTE_ID
 import com.example.mobiles1.ui.theme.Mobiles1Theme
-import kotlinx.coroutines.flow.flowOf
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,12 +55,11 @@ class MainActivity : ComponentActivity() {
                                 onRouteClick = { route -> selectedRouteId = route.id.toString() },
                                 modifier = Modifier.weight(1f)
                             )
-                            val selectedRouteFlow = selectedRouteId?.let { viewModel.getRouteById(UUID.fromString(it)) }
-                            val selectedRoute by (selectedRouteFlow ?: flowOf(null)).collectAsState(initial = null)
+                            val selectedRoute = routes.find { it.id.toString() == selectedRouteId }
                             
                             if (selectedRoute != null) {
                                 RouteDetails(
-                                    route = selectedRoute!!,
+                                    route = selectedRoute,
                                     viewModel = viewModel,
                                     modifier = Modifier.weight(2f)
                                 )
